@@ -1,7 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Mis Tareas</title>
 
@@ -55,6 +57,11 @@
             margin-right: 10px;
             text-decoration: none;
         }
+
+        #mensaje {
+            text-align: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 
@@ -70,51 +77,129 @@
         </a>
     </div>
 
-    {% for tarea in tareas %}
+    <p id="mensaje" role="status" aria-live="polite">
+        Cargando tareas...
+    </p>
 
-        <div class="tarea">
-
-            <h2>{{ tarea.titulo }}</h2>
-
-            <p>
-                {{ tarea.descripcion }}
-            </p>
-
-            <p>
-                <strong>Estado:</strong>
-
-                {% if tarea.completada %}
-                    Completada ✅
-                {% else %}
-                    Pendiente ⏳
-                {% endif %}
-            </p>
-
-            <div class="botones">
-
-                <a href="{% url 'detalle_tarea' tarea.id %}">
-                    👁️ Ver
-                </a>
-
-                <a href="{% url 'editar_tarea' tarea.id %}">
-                    ✏️ Editar
-                </a>
-
-                <a href="{% url 'eliminar_tarea' tarea.id %}">
-                    🗑️ Eliminar
-                </a>
-
-            </div>
-
-        </div>
-
-    {% empty %}
-
-        <p>No existen tareas registradas.</p>
-
-    {% endfor %}
+    <!-- Aquí JavaScript mostrará las tareas de la API -->
+    <div id="lista-tareas"></div>
 
 </div>
+
+<script>
+    const listaTareas = document.getElementById('lista-tareas');
+    const mensaje = document.getElementById('mensaje');
+
+    async function cargarTareas() {
+
+        // Recuperar el token guardado durante el login
+        const token = sessionStorage.getItem('token');
+
+        // Comprobar si existe un token
+        if (!token) {
+            mensaje.textContent = 'Debes iniciar sesión para ver tus tareas.';
+            window.location.href = '/';
+            return;
+        }
+
+        try {
+            // Consultar la API GET enviando el token
+            const respuesta = await fetch('/api/tareas/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`
+                }
+            });
+
+            // Si la autenticación falla, volver al login
+            if (respuesta.status === 401 || respuesta.status === 403) {
+                sessionStorage.removeItem('token');
+                window.location.href = '/';
+                return;
+            }
+
+            if (!respuesta.ok) {
+                mensaje.textContent = 'Error al consultar las tareas.';
+                return;
+            }
+
+            // Convertir la respuesta JSON a un arreglo de JavaScript
+            const tareas = await respuesta.json();
+
+            // Limpiar el contenedor antes de mostrar los resultados
+            listaTareas.replaceChildren();
+
+            if (tareas.length === 0) {
+                mensaje.textContent = 'No existen tareas registradas.';
+                return;
+            }
+
+            mensaje.textContent = '';
+
+            // Crear una tarjeta para cada tarea recibida
+            tareas.forEach(tarea => {
+
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'tarea';
+
+                const titulo = document.createElement('h2');
+                titulo.textContent = tarea.titulo;
+
+                const descripcion = document.createElement('p');
+                descripcion.textContent = tarea.descripcion;
+
+                const estado = document.createElement('p');
+                const etiqueta = document.createElement('strong');
+
+                etiqueta.textContent = 'Estado: ';
+                estado.appendChild(etiqueta);
+                estado.append(
+                    tarea.completada
+                        ? 'Completada ✅'
+                        : 'Pendiente ⏳'
+                );
+
+                const botones = document.createElement('div');
+                botones.className = 'botones';
+
+                const enlaceDetalle = document.createElement('a');
+                enlaceDetalle.href = `/detalle/${tarea.id}/`;
+                enlaceDetalle.textContent = '👁️ Ver';
+
+                const enlaceEditar = document.createElement('a');
+                enlaceEditar.href = `/editar/${tarea.id}/`;
+                enlaceEditar.textContent = '✏️ Editar';
+
+                const enlaceEliminar = document.createElement('a');
+                enlaceEliminar.href = `/eliminar/${tarea.id}/`;
+                enlaceEliminar.textContent = '🗑️ Eliminar';
+
+                botones.append(
+                    enlaceDetalle,
+                    enlaceEditar,
+                    enlaceEliminar
+                );
+
+                tarjeta.append(
+                    titulo,
+                    descripcion,
+                    estado,
+                    botones
+                );
+
+                listaTareas.appendChild(tarjeta);
+            });
+
+        } catch (error) {
+            mensaje.textContent =
+                'No se pudo conectar con el servidor.';
+            console.error('Error al cargar tareas:', error);
+        }
+    }
+
+    // Ejecutar la consulta al cargar la página
+    cargarTareas();
+</script>
 
 </body>
 </html>

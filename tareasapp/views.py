@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 from .models import Tarea
 # Create your views here.
 
@@ -16,9 +17,7 @@ from .models import Tarea
 def inicio(request):
     tareas = Tarea.objects.all()
 
-    return render(request, 'tareasapp/inicio.html', {
-        'tareas': tareas
-    }) 
+    return render(request, 'tareasapp/inicio.html') 
 
 
 def crear_tarea(request):
@@ -105,3 +104,21 @@ class LoginAPIView(APIView):
         return Response({
             'error': 'Usuario o contraseña incorrecta'
         }, status=status.HTTP_401_UNAUTHORIZED)
+
+class Tareasapiview(APIView):
+    authentication_clasess = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    #GET LISTAR todas las tareas
+    def get(self, request):
+        tareas = Tarea.objects.all()
+        datos = []
+
+        for tarea in tareas:
+            datos.append({
+                'id': tarea.id,  
+                'titulo':tarea.titulo,   
+                'descripcion':tarea.descripcion,
+                'completada':tarea.completada
+            })
+        return Response(datos, status.HTTP_200_OK)
