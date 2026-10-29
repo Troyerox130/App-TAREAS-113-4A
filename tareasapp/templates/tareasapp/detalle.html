@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalle de tarea</title>
 
     <style>
@@ -11,84 +10,174 @@
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
             margin: 0;
-            padding: 0;
+            padding: 30px;
         }
 
         .contenedor {
-            width: 60%;
-            margin: 40px auto;
-            background-color: white;
+            max-width: 650px;
+            margin: 30px auto;
             padding: 30px;
-            border-radius: 8px;
+            background-color: white;
+            border-radius: 10px;
         }
 
         h1 {
             text-align: center;
+            color: #333;
         }
 
-        .informacion {
-            margin-top: 30px;
+        .campo {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
         }
 
-        .informacion p {
-            font-size: 18px;
+        .etiqueta {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .valor {
+            overflow-wrap: anywhere;
+        }
+
+        .botones {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 25px;
         }
 
         .boton {
             display: inline-block;
-            padding: 10px 15px;
-            background-color: #333;
+            padding: 12px 18px;
             color: white;
             text-decoration: none;
             border-radius: 5px;
-            margin-top: 20px;
+        }
+
+        .volver {
+            background-color: #333;
+        }
+
+        .editar {
+            background-color: #0d6efd;
+        }
+
+        #mensaje {
+            text-align: center;
         }
     </style>
-
 </head>
 
 <body>
+    <main class="contenedor">
+        <h1>📋 Detalle de tarea</h1>
 
-<div class="contenedor">
+        <p id="mensaje">Cargando información...</p>
 
-    <h1>👁️ Detalle de tarea</h1>
+        <section id="datosTarea" hidden>
+            <div class="campo">
+                <span class="etiqueta">ID:</span>
+                <span id="id" class="valor"></span>
+            </div>
 
-    <div class="informacion">
+            <div class="campo">
+                <span class="etiqueta">Título:</span>
+                <span id="titulo" class="valor"></span>
+            </div>
 
-        <p>
-            <strong>ID:</strong>
-            {{ tarea.id }}
-        </p>
+            <div class="campo">
+                <span class="etiqueta">Descripción:</span>
+                <span id="descripcion" class="valor"></span>
+            </div>
 
-        <p>
-            <strong>Título:</strong>
-            {{ tarea.titulo }}
-        </p>
+            <div class="campo">
+                <span class="etiqueta">Estado:</span>
+                <span id="estado" class="valor"></span>
+            </div>
 
-        <p>
-            <strong>Descripción:</strong>
-            {{ tarea.descripcion }}
-        </p>
+            <div class="botones">
+                <a href="/tareas/" class="boton volver">
+                    Volver al listado
+                </a>
 
-        <p>
-            <strong>Estado:</strong>
+                <a id="enlaceEditar" class="boton editar">
+                    Editar tarea
+                </a>
+            </div>
+        </section>
+    </main>
 
-            {% if tarea.completada %}
-                Completada ✅
-            {% else %}
-                Pendiente ⏳
-            {% endif %}
+    <script>
+        const token = sessionStorage.getItem('token');
 
-        </p>
+        // Obtener el ID desde la URL /detalle/5/
+        const partesURL = window.location.pathname
+            .split('/')
+            .filter(Boolean);
 
-    </div>
+        const tareaId = partesURL[partesURL.length - 1];
 
-    <a href="/" class="boton">
-        ← Volver al inicio
-    </a>
+        const mensaje = document.getElementById('mensaje');
+        const datosTarea = document.getElementById('datosTarea');
 
-</div>
+        async function cargarDetalle() {
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
 
+            try {
+                const respuesta = await fetch(
+                    `/api/tareas/${tareaId}/`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Token ${token}`
+                        }
+                    }
+                );
+
+                if (respuesta.status === 401 ||
+                    respuesta.status === 403) {
+                    sessionStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        `No se pudo consultar la tarea. HTTP ${respuesta.status}`
+                    );
+                }
+
+                const tarea = await respuesta.json();
+
+                document.getElementById('id').textContent = tarea.id;
+                document.getElementById('titulo').textContent = tarea.titulo;
+                document.getElementById('descripcion').textContent =
+                    tarea.descripcion;
+
+                document.getElementById('estado').textContent =
+                    tarea.completada ? 'Completada' : 'Pendiente';
+
+                document.getElementById('enlaceEditar').href =
+                    `/editar/${tarea.id}/`;
+
+                datosTarea.hidden = false;
+                mensaje.textContent = '';
+
+            } catch (error) {
+                console.error(error);
+                mensaje.textContent = error.message;
+            }
+        }
+
+        cargarDetalle();
+    </script>
 </body>
-
 </html>
